@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.17)
+project(TwistedHesse C)
+find_package(OpenSSL REQUIRED)
+set(CMAKE_C_STANDARD 99)
+add_executable(TwistedHesse main.c hesse.c hesse.h)
+target_link_libraries(TwistedHesse OpenSSL::Crypto)
