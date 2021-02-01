@@ -287,6 +287,11 @@ void std_sum(struct point* P1, struct point* P2, struct point* P3, struct twiste
     BN_free(D);
 }
 
+
+void print_in_affine(struct point* P){
+    printf("x:%s\ny:%s\n\n",BN_bn2dec(P->X),BN_bn2dec(P->Y));
+}
+
 void print_in_projective(struct point* P){
     printf("X:%s\nY:%s\nZ:%s\n\n",BN_bn2dec(P->X),BN_bn2dec(P->Y),BN_bn2dec(P->Z));
 }
@@ -314,10 +319,6 @@ void swap_to_affin(struct point* aff_point, struct point* P, struct twisted_hess
     BN_free(x);
     BN_free(y);
     BN_free(z);
-}
-
-void print_in_affine(struct point* P){
-    printf("x:%s\ny:%s\n\n",BN_bn2dec(P->X),BN_bn2dec(P->Y));
 }
 
 void cra_find(struct point* kP, struct point* P, struct twisted_hesse* curve, BIGNUM* degree){
