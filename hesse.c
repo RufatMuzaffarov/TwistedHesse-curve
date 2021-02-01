@@ -1,10 +1,9 @@
 #include <openssl/bn.h>
-#include "hesse.h"
+#include "twistedhesse.h"
 
 
 void par_init(struct par* par){
     BN_dec2bn(&par->p, p_str);
-    BN_dec2bn(&par->a, a_str);
     BN_dec2bn(&par->b, b_str);
     BN_dec2bn(&par->u, x_str);
     BN_dec2bn(&par->v, y_str);
@@ -69,7 +68,7 @@ void twisted_hesse_init(struct twisted_hesse* curve, struct par* par){
     BN_mod_mul(buf_s2, curve->d, par -> u, curve->p, tmp);
     BN_mod_mul(buf_s2, buf_s2, buf1, curve->p, tmp);
 
-    BN_mod_mul(buf_s3, par->a, buf2, curve->p, tmp);
+    BN_mod_mul(buf_s3, curve->a, buf2, curve->p, tmp);
 
     BN_mod_mul(buf_s4, par->v, buf3, curve->p, tmp);
 
@@ -93,7 +92,7 @@ void twisted_hesse_init(struct twisted_hesse* curve, struct par* par){
     BN_mod_inverse(invert, res, curve->p, tmp);
     BN_mod_mul(res_x, buf_x, invert, curve->p, tmp);
 
-    BN_mod_mul(res_y, buf_x, invert, curve->p, tmp);
+    BN_mod_mul(res_y, buf_y, invert, curve->p, tmp);
 
     BN_mod_sub(res_y, buf11, res_y, curve->p, tmp);
 
@@ -127,13 +126,13 @@ void twisted_hesse_init(struct twisted_hesse* curve, struct par* par){
 
 
 int is_point_equal(struct point* P1, struct point* P2, struct twisted_hesse* curve){
-    struct point affine_point1 = {NULL, NULL, NULL};
-    struct point affine_point2 = {NULL, NULL, NULL};
-    point_init(&affine_point1,"0","-1","1");
-    point_init(&affine_point2,"0","-1","1");
+    struct point affine_point1 = {BN_new(), BN_new(),BN_new()};
+    struct point affine_point2 = {BN_new(), BN_new(), BN_new()};
+//    point_init(&affine_point1,"0","-1","1");
+//    point_init(&affine_point2,"0","-1","1");
     swap_to_affin(&affine_point1,P1,curve);
     swap_to_affin(&affine_point2,P2,curve);
-    int res = -100;
+    int res;
     if(!(BN_cmp(affine_point1.X, affine_point2.X) && BN_cmp(affine_point1.Y, affine_point2.Y))){
 
         res = 0; // точки равны
@@ -147,7 +146,7 @@ int is_point_equal(struct point* P1, struct point* P2, struct twisted_hesse* cur
 
 }
 
-int aff_point_check(struct point* Q, struct twisted_hesse* par){
+int aff_point_check(struct point* Q, struct twisted_hesse* curve){
     BN_CTX* tmp = BN_CTX_new ();
     BIGNUM* left  = BN_new ();
     BIGNUM* right = BN_new ();
@@ -156,17 +155,21 @@ int aff_point_check(struct point* Q, struct twisted_hesse* par){
     BN_dec2bn(&num3, "3");
 
     //a * X^3 + Y^3 + Z^3 = 3 * d * X * Y * Z - подставить точки и сравнить левую правую часть
-    BN_mod_exp(left, Q->X, num3, par -> p, tmp);             // left = X^3
-    BN_mod_mul(left, left, par -> a, par -> p, tmp);        // left = a * X^3
-    BN_mod_exp(buf, Q->Y, num3, par -> p, tmp);            // Y^3
-    BN_mod_add(left, left, buf, par -> p, tmp);           // left = a*X^3+Y^3
-    BN_mod_exp(buf, Q->Z, num3, par -> p, tmp);          // Z^3
-    BN_mod_add(left, left, buf, par -> p, tmp);         // left = a*X^3+Y^3+Z^3
+    BN_mod_exp(left, Q->X, num3, curve -> p, tmp);             // left = X^3
+    BN_mod_mul(left, left, curve -> a, curve -> p, tmp);        // left = a * X^3
+    BN_mod_exp(buf, Q->Y, num3, curve -> p, tmp);            // Y^3
+    BN_mod_add(left, left, buf, curve -> p, tmp);           // left = a*X^3+Y^3
+    BN_mod_exp(buf, Q->Z, num3, curve -> p, tmp);          // Z^3
+    BN_mod_add(left, left, buf, curve -> p, tmp);         // left = a*X^3+Y^3+Z^3
+    /*printf(BN_bn2dec(left));
+    printf("\n");*/
 
-    BN_mod_mul(right, Q->X, Q->Y, par -> p, tmp);           // right = X * Y
-    BN_mod_mul(right, right, par -> d, par -> p, tmp);     // right = d * X * Y
-    BN_mod_mul(right, right, Q -> Z, par -> p, tmp);      // right = d * X * Y * Z
-    BN_mod_sub(buf, right, left, par -> p, tmp);         // вычесть из правой части левую и сравнить с нулем
+    BN_mod_mul(right, Q->X, Q->Y, curve -> p, tmp);           // right = X * Y
+    BN_mod_mul(right, right, curve -> d, curve -> p, tmp);     // right = d * X * Y
+    BN_mod_mul(right, right, Q -> Z, curve -> p, tmp);      // right = d * X * Y * Z
+    BN_mod_sub(buf, right, left, curve -> p, tmp);         // вычесть из правой части левую и сравнить с нулем
+    /*printf(BN_bn2dec(right));
+    printf("\n");*/
 
     int res = BN_is_zero(buf);
     BN_CTX_free(tmp);
@@ -178,7 +181,7 @@ int aff_point_check(struct point* Q, struct twisted_hesse* par){
     return res;
 }
 
-void add_points(struct point* P1, struct point* P2, struct point* P3, struct twisted_hesse* curve){
+void rot_sum(struct point* P1, struct point* P2, struct point* P3, struct twisted_hesse* curve){
     BN_CTX *tmp = BN_CTX_new();
     BIGNUM* A = BN_new();
     BIGNUM* B = BN_new();
@@ -198,13 +201,13 @@ void add_points(struct point* P1, struct point* P2, struct point* P3, struct twi
 
     //алгоритм сложения
 
-    BN_mod_mul(A, P1->X, P2->Z, curve->p, tmp); //X1 * X2
-    BN_mod_mul(B, P1->Z, P2->Z, curve->p, tmp); //Z1 * Z2
-    BN_mod_mul(C, P1->Y, P2->X, curve->p, tmp); //Y1 * X2
-    BN_mod_mul(D, P1->Y, P2->Y, curve->p, tmp); //Y1 * Y2
-    BN_mod_mul(E, P1->Z, P2 ->Y, curve->p, tmp); //Z1 * Y2
-    BN_mod_mul(F, P1->X, P2->X, curve->p, tmp); //X1 * X2
-    BN_mod_mul(F, curve->a, F, curve->p, tmp); //a * X1 * X2
+    BN_mod_mul(A, P1->X, P2->Z, curve->p, tmp); //A = X1 * Z2
+    BN_mod_mul(B, P1->Z, P2->Z, curve->p, tmp); //B = Z1 * Z2
+    BN_mod_mul(C, P1->Y, P2->X, curve->p, tmp); //C = Y1 * X2
+    BN_mod_mul(D, P1->Y, P2->Y, curve->p, tmp); //D = Y1 * Y2
+    BN_mod_mul(E, P1->Z, P2 ->Y, curve->p, tmp); //E = Z1 * Y2
+    BN_mod_mul(F, P1->X, P2->X, curve->p, tmp); //F = X1 * X2
+    BN_mod_mul(F, curve->a, F, curve->p, tmp); //F = a * X1 * X2
     BN_mod_mul(AB, A, B, curve->p, tmp); //A * B
     BN_mod_mul(CD, C, D, curve->p, tmp); //C * D
     BN_mod_mul(DE, D, E, curve->p, tmp); //D * E
@@ -212,8 +215,8 @@ void add_points(struct point* P1, struct point* P2, struct point* P3, struct twi
     BN_mod_mul(FC, F, C, curve->p, tmp); //F * C
     BN_mod_mul(BE, B, E, curve->p, tmp); //B * E
     BN_mod_sub(T1, AB, CD, curve->p, tmp); //AB - CD
-    BN_mod_sub(T3, DE, FA, curve->p, tmp); //DE - FA
-    BN_mod_sub(T2, FC, BE, curve->p, tmp); //FC - BE
+    BN_mod_sub(T2, DE, FA, curve->p, tmp); //DE - FA
+    BN_mod_sub(T3, FC, BE, curve->p, tmp); //FC - BE
     BN_copy(P3->X, T1);
     BN_copy(P3->Y, T2);
     BN_copy(P3->Z, T3);
@@ -237,8 +240,52 @@ void add_points(struct point* P1, struct point* P2, struct point* P3, struct twi
     BN_free(BE);
 }
 
-void print_in_affine(struct point* P){
-    printf("x:%s\ny:%s\n\n",BN_bn2dec(P->X),BN_bn2dec(P->Y));
+void std_sum(struct point* P1, struct point* P2, struct point* P3, struct twisted_hesse* curve){
+    BN_CTX *tmp = BN_CTX_new();
+    BIGNUM* A = BN_new();
+    BIGNUM* B = BN_new();
+    BIGNUM* C = BN_new();
+    BIGNUM* D = BN_new();
+    BIGNUM* T1 = BN_new();
+    BIGNUM* T2 = BN_new();
+    BIGNUM* T3 = BN_new();
+
+    BN_mod_sqr(A, P1->X, curve->p, tmp); //X1^2
+    BN_mod_mul(B, P2->Y, P2->Z, curve->p, tmp); //Y2*Z2
+    BN_mod_mul(C, A, B, curve->p, tmp); // X1^2*Y2*Z2
+    BN_mod_sqr(A, P2->X, curve->p, tmp); //X2^2
+    BN_mod_mul(B, P1->Y, P1->Z ,curve->p, tmp); //Y1*Z1
+    BN_mod_mul(D, A, B, curve->p, tmp); //X2^2*Y1*Z1
+    BN_mod_sub(T1, C, D, curve->p, tmp); //X1^2*Y2*Z2 - X2^2*Y1*Z1
+
+    BN_mod_sqr(A, P1->Z, curve->p, tmp); //Z1^2
+    BN_mod_mul(B, P2->X, P2->Y, curve->p, tmp); //X2*Y2
+    BN_mod_mul(C, A, B, curve->p, tmp); //Z1^2*X2*Y2
+    BN_mod_sqr(A, P2->Z, curve->p, tmp); //Z2^2
+    BN_mod_mul(B, P1->X, P1->Y ,curve->p, tmp); //X1*Y1
+    BN_mod_mul(D, A, B, curve->p, tmp); //Z2^2*X1*Y1
+    BN_mod_sub(T2, C, D, curve->p, tmp); //Z1^2*X2*Y2 - Z2^2*X1*Y1
+
+    BN_mod_sqr(A, P1->Y, curve->p, tmp); //Y1^2
+    BN_mod_mul(B, P2->X, P2->Z, curve->p, tmp); //X2*Z2
+    BN_mod_mul(C, A, B, curve->p, tmp); //Y1^2*X2*Z2
+    BN_mod_sqr(A, P2->Y, curve->p, tmp); //Y2^2
+    BN_mod_mul(B, P1->X, P1->Z ,curve->p, tmp); //X1*Z1
+    BN_mod_mul(D, A, B, curve->p, tmp); //Y2^2*X1*Z1
+    BN_mod_sub(T3, C, D, curve->p, tmp); //Y1^2*X2*Z2 - Y2^2*X1*Z1
+
+    BN_copy(P3->X, T1);
+    BN_copy(P3->Y, T2);
+    BN_copy(P3->Z, T3);
+
+    BN_CTX_free(tmp);
+    BN_free(T1);
+    BN_free(T2);
+    BN_free(T3);
+    BN_free(A);
+    BN_free(B);
+    BN_free(C);
+    BN_free(D);
 }
 
 void print_in_projective(struct point* P){
@@ -254,13 +301,11 @@ void swap_to_affin(struct point* aff_point, struct point* P, struct twisted_hess
 
     BN_mod_inverse(x, P->Z, curve->p, tmp);
     BN_mod_mul(x, x, P->X, curve->p, tmp);
-
-
     BN_mod_inverse(y, P->Z, curve->p, tmp);
     BN_mod_mul(y, y, P->Y, curve->p, tmp);
 
 
-    BN_dec2bn(&z, "0");
+    BN_dec2bn(&z, "1");
 
     BN_copy(aff_point->X, x);
     BN_copy(aff_point->Y, y);
@@ -272,10 +317,14 @@ void swap_to_affin(struct point* aff_point, struct point* P, struct twisted_hess
     BN_free(z);
 }
 
-void crat_find(struct point* kP, struct point* P, struct twisted_hesse* curve, BIGNUM* degree){
+void print_in_affine(struct point* P){
+    printf("x:%s\ny:%s\n\n",BN_bn2dec(P->X),BN_bn2dec(P->Y));
+}
+
+void cra_find(struct point* kP, struct point* P, struct twisted_hesse* curve, BIGNUM* degree){
 
     int bits = BN_num_bits(degree);
-    struct point R = {BN_new (), BN_new (), BN_new ()};
+    struct point R = {BN_new(),BN_new(),BN_new()};
     struct point Q = {NULL,NULL,NULL};
     point_init(&Q, "0", "-1", "1");
 
@@ -285,12 +334,12 @@ void crat_find(struct point* kP, struct point* P, struct twisted_hesse* curve, B
 
     for(int i = bits - 1; i >= 0; --i){
         if (BN_is_bit_set(degree, i)){
-            add_points(&Q, &R, &Q, curve);//Q = R + Q
-            add_points(&R, &R, &R, curve); //R = R + R
+            std_sum(&Q, &R, &Q, curve);//Q = Q + R
+            rot_sum(&R, &R, &R, curve); //R = R + R
         }
         else{
-            add_points(&R, &Q, &R, curve); //R = R + Q
-            add_points(&Q, &Q, &Q, curve); // Q= Q + Q
+            std_sum(&R, &Q, &R, curve); //R = R + Q
+            rot_sum(&Q, &Q, &Q, curve); // Q = Q + Q
         }
     }
 
@@ -300,7 +349,6 @@ void crat_find(struct point* kP, struct point* P, struct twisted_hesse* curve, B
 
     FreePoint(&Q);
     FreePoint(&R);
-
 }
 
 void reverse_point (struct point *res, struct point *point, struct par* par){
@@ -315,13 +363,6 @@ void reverse_point (struct point *res, struct point *point, struct par* par){
     BN_copy(res->Z, point->Z);
 }
 
-void FreeParam(struct par* par){
-    BN_free(par->p);
-    BN_free(par->a);
-    BN_free(par->b);
-    BN_free(par->u);
-    BN_free(par->v);
-}
 void FreePoint(struct point* P){
     BN_free(P->X);
     BN_free(P->Y);
