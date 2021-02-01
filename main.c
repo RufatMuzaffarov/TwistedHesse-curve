@@ -5,7 +5,7 @@
 
 int main()
 {
-    struct par param = {NULL, NULL, NULL, NULL, NULL};
+    struct par param = {NULL, NULL, NULL, NULL};
     par_init(&param);
 
     //вывожу наборы параметров
