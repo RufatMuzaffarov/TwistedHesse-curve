@@ -145,50 +145,50 @@ int main()
     /*********************************************************************/
 
     printf("Тест 6: Проверка равенства [k1]P + [k2]P = [k1 + k2]P\n");
-      BIGNUM* k1 = BN_new();
-      BIGNUM* k2 = BN_new();
-      printf("Генерация k1 и k2\n");
-      BIGNUM* maxrand = BN_new();
-      BN_dec2bn(&maxrand, "100000000000000000");
-      BN_rand_range(k1, maxrand);
-      BN_rand_range(k2, maxrand);
-      printf("k1 = %s\n", BN_bn2dec(k1));
-      printf("k2 = %s\n", BN_bn2dec(k2));
-      BN_add(k, k1, k2);                          //k = k1 + k2
-      printf("k = k1 + k2 = %s\n\n", BN_bn2dec(k));
-      struct point res1 = {BN_new(), BN_new(), BN_new()};
-      struct point res2 = {BN_new(), BN_new(), BN_new()};
-      struct point res3 = {BN_new(), BN_new(), BN_new()};
-      struct point result2 = {BN_new(),BN_new(), BN_new()};
-      cra_find(&res1, &P, &curve, k1);
-      cra_find(&res2, &P, &curve, k2);
-      cra_find(&res3, &P, &curve, k);
-      rot_sum(&res1, &res2, &result2, &curve);
+    BIGNUM* k1 = BN_new();
+    BIGNUM* k2 = BN_new();
+    printf("Генерация k1 и k2\n");
+    BIGNUM* maxrand = BN_new();
+    BN_dec2bn(&maxrand, "100000000000000000");
+    BN_rand_range(k1, maxrand);
+    BN_rand_range(k2, maxrand);
+    printf("k1 = %s\n", BN_bn2dec(k1));
+    printf("k2 = %s\n", BN_bn2dec(k2));
+    BN_add(k, k1, k2);                          //k = k1 + k2
+    printf("k = k1 + k2 = %s\n\n", BN_bn2dec(k));
+    struct point res1 = {BN_new(), BN_new(), BN_new()};
+    struct point res2 = {BN_new(), BN_new(), BN_new()};
+    struct point res3 = {BN_new(), BN_new(), BN_new()};
+    struct point result2 = {BN_new(),BN_new(), BN_new()};
+    cra_find(&res1, &P, &curve, k1);
+    cra_find(&res2, &P, &curve, k2);
+    cra_find(&res3, &P, &curve, k);
+    rot_sum(&res1, &res2, &result2, &curve);
 
-      if(!(is_point_equal(&result2, &res3, &curve))){
-                printf("1) [k1]P + [k2]P равно [k1 + k2]P\n\n");
-       }
-      else{
-          printf("1) [k1]P + [k2]P не равно [k1 + k2]P\n\n");
-      }
-      if(aff_point_check(&res3, &curve)){
-          printf("2) Точка [k]P находится на кривой\n\n");
-      }
-      else{
-          printf("2) Точка [k]P не находится на кривой\n\n");
-      }
-      FreePoint(&res1);
-      FreePoint(&res2);
-      FreePoint(&res3);
-      BN_free(k1);
-      BN_free(k2);
-      BN_free(k);
-      FreePoint(&negP);
-      BN_free(num);
-      FreePoint(&result2);
-      FreePoint(&S);
-      FreePoint(&p_O);
-      FreePoint(&o_O);
-      FreePoint(&O);
-      FreePoint(&P);
+    if(!(is_point_equal(&result2, &res3, &curve))){
+              printf("1) [k1]P + [k2]P равно [k1 + k2]P\n\n");
+     }
+    else{
+        printf("1) [k1]P + [k2]P не равно [k1 + k2]P\n\n");
+    }
+    if(aff_point_check(&res3, &curve)){
+        printf("2) Точка [k]P находится на кривой\n\n");
+    }
+    else{
+        printf("2) Точка [k]P не находится на кривой\n\n");
+    }
+    FreePoint(&res1);
+    FreePoint(&res2);
+    FreePoint(&res3);
+    BN_free(k1);
+    BN_free(k2);
+    BN_free(k);
+    FreePoint(&negP);
+    BN_free(num);
+    FreePoint(&result2);
+    FreePoint(&S);
+    FreePoint(&p_O);
+    FreePoint(&o_O);
+    FreePoint(&O);
+    FreePoint(&P);
 }
