@@ -4,7 +4,6 @@
 
 void par_init(struct par* par){
     BN_dec2bn(&par->p, p_str);
-    BN_dec2bn(&par->b, b_str);
     BN_dec2bn(&par->u, x_str);
     BN_dec2bn(&par->v, y_str);
     BN_dec2bn(&par->q, q_str);
